@@ -65,11 +65,11 @@ static class Program
 
             for (int i = 0; i < ps3Armor.TexturedMeshes.Count; i++)
             {
-                Mesh aiMesh = new Mesh($"Mesh_{i}");
+                Mesh aiMesh = new Mesh($"TexMesh_{i}");
 
                 Material aiMat = new Material();
 
-                aiMat.Name = $"{armorName}_tex_{ps3Armor.TexturedMeshes[i].TextureIndex}";
+                aiMat.Name = $"{armorName}_mat_{i}_tex_{ps3Armor.TexturedMeshes[i].TextureIndex}";
 
                 TextureSlot diffTex = new TextureSlot() { FilePath = $"{armorName}_tex_{ps3Armor.TexturedMeshes[i].TextureIndex}.dds" };
                 diffTex.Mapping = TextureMapping.FromUV;
@@ -95,7 +95,6 @@ static class Program
                     aiMesh.Bones.Add(aiBone);
                 }
 
-                // we want to retarget the vertices for the mesh... maybe...
 
                 for (int j = 0; j <  ps3Armor.TexturedMeshes[i].IndexCount; j+= 3)
                 {
@@ -169,6 +168,99 @@ static class Program
                 scene.Meshes.Add(aiMesh);
                 Node meshNode = new Node($"Mesh_{i}");
                 meshNode.MeshIndices.Add(i);
+                scene.RootNode.Children.Add(meshNode);
+            }
+
+            // Reflection Meshes
+
+            for (int i = 0; i < ps3Armor.ReflectiveMeshes.Count; i++)
+            {
+                Mesh aiMesh = new Mesh($"RefMesh_{i}");
+
+                Material aiMat = new Material();
+
+                aiMat.Name = $"{armorName}_mat_{i}_ref_{ps3Armor.ReflectiveMeshes[i].ReflectionMode}";
+
+                aiMat.ShadingMode = ShadingMode.Blinn;
+
+                aiMat.ColorDiffuse = new Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+                aiMat.ColorSpecular = new Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+
+                scene.Materials.Add(aiMat);
+                aiMesh.MaterialIndex = i + ps3Armor.TexturedMeshes.Count;
+
+                for (int j = 0; j < ps3Armor.Bones.Count; j++)
+                {
+                    Assimp.Bone aiBone = new Assimp.Bone();
+                    aiBone.Name = $"Bone_{j:D3}";
+                    Matrix4x4 offsetMatrix = AssimpHelpers.CalculateNodeMatrixWS(scene.RootNode.FindNode($"Bone_{j:D3}"));
+                    Matrix4x4.Invert(offsetMatrix, out Matrix4x4 inverseBindPoseMatrix);
+
+                    aiBone.OffsetMatrix = inverseBindPoseMatrix;
+
+                    aiMesh.Bones.Add(aiBone);
+                }
+
+
+                for (int j = 0; j < ps3Armor.ReflectiveMeshes[i].IndexCount; j += 3)
+                {
+                    aiMesh.Vertices.Add(ps3Armor.Vertices[ps3Armor.ReflectiveMeshes[i].Indices[j]].Position * 1024.0f);
+                    aiMesh.Vertices.Add(ps3Armor.Vertices[ps3Armor.ReflectiveMeshes[i].Indices[j + 1]].Position * 1024.0f);
+                    aiMesh.Vertices.Add(ps3Armor.Vertices[ps3Armor.ReflectiveMeshes[i].Indices[j + 2]].Position * 1024.0f);
+                    aiMesh.Normals.Add(ps3Armor.Vertices[ps3Armor.ReflectiveMeshes[i].Indices[j]].Normal);
+                    aiMesh.Normals.Add(ps3Armor.Vertices[ps3Armor.ReflectiveMeshes[i].Indices[j + 1]].Normal);
+                    aiMesh.Normals.Add(ps3Armor.Vertices[ps3Armor.ReflectiveMeshes[i].Indices[j + 2]].Normal);
+
+                    // determine if the face is counter or not.
+
+                    // start by generating the face normal
+                    Vector3 edge0 = ps3Armor.Vertices[ps3Armor.ReflectiveMeshes[i].Indices[j + 1]].Position - ps3Armor.Vertices[ps3Armor.ReflectiveMeshes[i].Indices[j]].Position;
+                    Vector3 edge1 = ps3Armor.Vertices[ps3Armor.ReflectiveMeshes[i].Indices[j + 2]].Position - ps3Armor.Vertices[ps3Armor.ReflectiveMeshes[i].Indices[j]].Position;
+
+                    Vector3 faceNormal = Vector3.Cross(edge0, edge1);
+
+                    // then average the vertex normal to get an estimate of the correct normal direction
+                    Vector3 vertexNormalAvg = (ps3Armor.Vertices[ps3Armor.ReflectiveMeshes[i].Indices[j]].Normal + ps3Armor.Vertices[ps3Armor.ReflectiveMeshes[i].Indices[j + 1]].Normal + ps3Armor.Vertices[ps3Armor.ReflectiveMeshes[i].Indices[j + 2]].Normal) / 3.0f;
+
+                    // do a dot product to compare the two
+                    float winding = Vector3.Dot(faceNormal, vertexNormalAvg);
+
+
+                    // and if it's positive, it's correct
+                    if (winding > 0)
+                    {
+
+                        Face aiFace = new Face(new int[] { j, j + 1, j + 2 });
+                        aiMesh.Faces.Add(aiFace);
+                    }
+                    // else, it's been reversed, and we'll now un-reverse it.
+                    else
+                    {
+                        Face aiFace = new Face(new int[] { j + 2, j + 1, j });
+                        aiMesh.Faces.Add(aiFace);
+                    }
+
+                    if (ps3Armor.Bones.Count != 0)
+                    {
+                        // weights
+                        Vector4 tIndices0 = ps3Armor.Vertices[ps3Armor.ReflectiveMeshes[i].Indices[j]].Indices;
+                        Vector4 tWeights0 = ps3Armor.Vertices[ps3Armor.ReflectiveMeshes[i].Indices[j]].Weights;
+                        Vector4 tIndices1 = ps3Armor.Vertices[ps3Armor.ReflectiveMeshes[i].Indices[j + 1]].Indices;
+                        Vector4 tWeights1 = ps3Armor.Vertices[ps3Armor.ReflectiveMeshes[i].Indices[j + 1]].Weights;
+                        Vector4 tIndices2 = ps3Armor.Vertices[ps3Armor.ReflectiveMeshes[i].Indices[j + 2]].Indices;
+                        Vector4 tWeights2 = ps3Armor.Vertices[ps3Armor.ReflectiveMeshes[i].Indices[j + 2]].Weights;
+                        for (int k = 0; k < 4; k++)
+                        {
+                            aiMesh.Bones[(int)tIndices0[k]].VertexWeights.Add(new VertexWeight() { VertexID = j, Weight = tWeights0[k] });
+                            aiMesh.Bones[(int)tIndices1[k]].VertexWeights.Add(new VertexWeight() { VertexID = j + 1, Weight = tWeights1[k] });
+                            aiMesh.Bones[(int)tIndices2[k]].VertexWeights.Add(new VertexWeight() { VertexID = j + 2, Weight = tWeights2[k] });
+                        }
+                    }
+                }
+
+                scene.Meshes.Add(aiMesh);
+                Node meshNode = new Node($"RefMesh_{i}");
+                meshNode.MeshIndices.Add(i + ps3Armor.TexturedMeshes.Count);
                 scene.RootNode.Children.Add(meshNode);
             }
 
