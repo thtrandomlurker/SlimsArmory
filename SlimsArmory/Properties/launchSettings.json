@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "SlimsArmory": {
+      "commandName": "Project",
+      "commandLineArgs": "\"D:\\EMU\\RPCS3\\dev_hdd0\\game\\NPJA40002\\USRDIR\\rc2\\ps3data\\global\\armor\\armor0.ps3\"",
+      "workingDirectory": "C:\\Users\\thatr\\source\\repos\\SlimsArmory\\SlimsArmory\\bin\\Debug\\net8.0"
+    }
+  }
+}
