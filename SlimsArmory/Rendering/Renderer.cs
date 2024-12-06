@@ -45,8 +45,7 @@ namespace SlimsArmory.Rendering
             Meshes = new List<GLMesh>();
             TexturedShader = Shader.Create("Textured");
             ReflectiveShader = Shader.Create("Reflective");
-            DebugShader = Shader.Create("Debug");
-            LightPosition = new Vector3(0.0f, 0.0f, 0.0f);
+            LightPosition = new Vector3(200.0f, 400.0f, 500.0f);
 
             mDebugVertexArray = GL.GenVertexArray();
             GL.BindVertexArray(mDebugVertexArray);
@@ -57,15 +56,6 @@ namespace SlimsArmory.Rendering
 
             GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 12, 0);
             GL.EnableVertexAttribArray(0);
-        }
-
-        public void DebugDraw()
-        {
-            DebugShader.Bind();
-            GL.BindVertexArray(mDebugVertexArray);
-            GL.BindBuffer(BufferTarget.ArrayBuffer, mDebugVertexBuffer);
-
-            GL.DrawArrays(PrimitiveType.Triangles, 0, 3);
         }
 
         public void AddObject(RaCLib.Armor.Armor armor)
