@@ -5,6 +5,7 @@ in vec3 fNormal;
 in vec2 fUV;
 in vec4 fWeights;
 in vec4 fIndices;
+in float fIsLit;
 
 uniform sampler2D uTexture;
 uniform vec3 uEye;
@@ -22,5 +23,11 @@ void main() {
 
 	vec3 diffuseLighting = (diffuse.rgb * 0.5) + (diffuse.rgb * (nDotL * 0.75 + 0.25));
 
-	oColor = vec4(diffuseLighting, diffuse.a);
+	if (fIsLit >= 0) {
+		oColor = vec4(diffuseLighting, diffuse.a);
+	}
+	else {
+		oColor = diffuse;
+	}
+
 }

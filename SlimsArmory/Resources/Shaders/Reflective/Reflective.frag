@@ -5,6 +5,7 @@ in vec3 fNormal;
 in vec2 fUV;
 in vec4 fWeights;
 in vec4 fIndices;
+//in int fIsLit;
 
 uniform vec3 uEye;
 uniform vec3 uLightPos;
@@ -21,5 +22,10 @@ void main() {
 
 	float spec = pow(nDotH, 20.0f);
 
-	oColor = vec4(1.0f, 1.0f, 0.0f, 1.0f);
+	if (1 != 0) {
+		oColor = vec4(1.0f, 1.0f, 0.0f, 1.0f);
+	}
+	else {
+		oColor = vec4(0.0f, 1.0f, 0.0f, 1.0f);
+	}
 }

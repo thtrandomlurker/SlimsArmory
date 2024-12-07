@@ -187,6 +187,7 @@ namespace RaCLib.Armor
         public Vector2 UV;
         public Vector4 Weights;
         public Vector4 Indices;
+        public Vector2 VertexMD;
     }
 
 
@@ -204,6 +205,7 @@ namespace RaCLib.Armor
         public List<ArmorTexturedSubmesh> TexturedMeshes;
         public List<ArmorReflectiveSubmesh> ReflectiveMeshes;  // these are transparent overlay meshes which get an env shine applied.
         public List<ArmorTexture> Textures;
+        public short NumLitVertices;
         public ArmorVertex[]? Vertices;
         public List<Bone> Bones;
         private Stream? mTexStream;
@@ -237,7 +239,7 @@ namespace RaCLib.Armor
             short reflectiveVerticesCount = reader.ReadInt16();
             Vertices = new ArmorVertex[texturedVerticesCount + reflectiveVerticesCount];
 
-            short indicesCount = reader.ReadInt16();
+            NumLitVertices = reader.ReadInt16();
             // 2 bytes padding it to the end
 
             reader.Seek(texturedMeshInfoOffset, SeekOrigin.Begin);
@@ -288,6 +290,8 @@ namespace RaCLib.Armor
                     Vertices[i].UV = reader.ReadVec2();
                 Vertices[i].Weights = reader.ReadVec4(VectorBinaryFormat.UInt8Normalized);
                 Vertices[i].Indices = reader.ReadVec4(VectorBinaryFormat.UInt8);
+                Vertices[i].VertexMD.X = (float)i;
+                Vertices[i].VertexMD.Y = (float)NumLitVertices;
             }
 
             // next fetch the indices
@@ -333,6 +337,23 @@ namespace RaCLib.Armor
                     Textures.Add(tex);
                 }
             }
+        }
+
+        public void Write(EndianBinaryWriter writer)
+        {
+            if (IsPS3)
+            {
+                writer.Endian = Endianness.Big;
+            }
+            // meshinfo in armors always starts at 0x10
+            writer.Write(0x10);
+            // write a dummy value for now for the vram info offset
+            writer.Write(0xDEADBEEF);
+            writer.Write(Textures.Count);
+            writer.Write(0);
+            writer.Write(TexturedMeshes.Count);
+            writer.Write(ReflectiveMeshes.Count);
+            // the textured meshes usually start at 0x30, which is conveniently right after our data
         }
 
         public void Load(string filePath, string? enginePath = null)

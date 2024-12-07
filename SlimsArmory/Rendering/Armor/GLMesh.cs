@@ -24,6 +24,7 @@ namespace SlimsArmory.Rendering.Armor
         public List<GLTexture> Textures;
 
         public int TextureIndex;
+        public int NumLitVertices;
 
         public GLMesh(RaCLib.Armor.Armor mesh)
         {
@@ -40,17 +41,19 @@ namespace SlimsArmory.Rendering.Armor
                     GL.BindVertexArray(mTexturedVertexArrayObject);
                     mTexturedVertexBufferObject = GL.GenBuffer();
                     GL.BindBuffer(BufferTarget.ArrayBuffer, mTexturedVertexBufferObject);
-                    GL.NamedBufferData(mTexturedVertexBufferObject, mBaseMesh.Vertices.Length * (12 + 12 + 8 + 16 + 16), mBaseMesh.Vertices, BufferUsageHint.StaticDraw);
-                    GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, (12 + 12 + 8 + 16 + 16), 0);
-                    GL.VertexAttribPointer(1, 3, VertexAttribPointerType.Float, false, (12 + 12 + 8 + 16 + 16), 12);
-                    GL.VertexAttribPointer(2, 2, VertexAttribPointerType.Float, false, (12 + 12 + 8 + 16 + 16), 24);
-                    GL.VertexAttribPointer(3, 4, VertexAttribPointerType.Float, false, (12 + 12 + 8 + 16 + 16), 40);
-                    GL.VertexAttribPointer(4, 4, VertexAttribPointerType.Float, false, (12 + 12 + 8 + 16 + 16), 56);
+                    GL.NamedBufferData(mTexturedVertexBufferObject, mBaseMesh.Vertices.Length * (12 + 12 + 8 + 16 + 16 + 8), mBaseMesh.Vertices, BufferUsageHint.StaticDraw);
+                    GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, (12 + 12 + 8 + 16 + 16 + 8), 0);
+                    GL.VertexAttribPointer(1, 3, VertexAttribPointerType.Float, false, (12 + 12 + 8 + 16 + 16 + 8), 12);
+                    GL.VertexAttribPointer(2, 2, VertexAttribPointerType.Float, false, (12 + 12 + 8 + 16 + 16 + 8), 24);
+                    GL.VertexAttribPointer(3, 4, VertexAttribPointerType.Float, false, (12 + 12 + 8 + 16 + 16 + 8), 40);
+                    GL.VertexAttribPointer(4, 4, VertexAttribPointerType.Float, false, (12 + 12 + 8 + 16 + 16 + 8), 56);
+                    GL.VertexAttribPointer(5, 2, VertexAttribPointerType.Float, false, (12 + 12 + 8 + 16 + 16 + 8), 72);
                     GL.EnableVertexAttribArray(0);
                     GL.EnableVertexAttribArray(1);
                     GL.EnableVertexAttribArray(2);
                     GL.EnableVertexAttribArray(3);
                     GL.EnableVertexAttribArray(4);
+                    GL.EnableVertexAttribArray(5);
 
                     TexturedSubMeshes = new List<GLTexturedSubMesh>();
 
@@ -72,6 +75,8 @@ namespace SlimsArmory.Rendering.Armor
                     {
                         Textures.Add(new GLTexture(tex));
                     }
+
+                    NumLitVertices = mesh.NumLitVertices;
                 }
             }
         }

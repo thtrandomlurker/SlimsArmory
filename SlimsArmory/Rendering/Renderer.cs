@@ -76,6 +76,7 @@ namespace SlimsArmory.Rendering
                 TexturedShader.SetUniform("matProj", Camera.ProjectionMatrix);// Calculate the view direction (normalized)
                 TexturedShader.SetUniform("uEye", viewDirection);
                 TexturedShader.SetUniform("uLightPos", LightPosition);
+                TexturedShader.SetUniform("uNumLitVertices", mesh.NumLitVertices);
 
                 mesh.DrawTextured(TexturedShader);
 
@@ -85,6 +86,7 @@ namespace SlimsArmory.Rendering
                 ReflectiveShader.SetUniform("matProj", Camera.ProjectionMatrix);// Calculate the view direction (normalized)
                 ReflectiveShader.SetUniform("uEye", viewDirection);
                 ReflectiveShader.SetUniform("uLightPos", LightPosition);
+                ReflectiveShader.SetUniform("uNumLitVertices", mesh.NumLitVertices);
                 mesh.DrawReflective(ReflectiveShader);
             }
         }

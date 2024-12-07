@@ -19,12 +19,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Resources\Shaders\Debug\Debug.frag">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Resources\Shaders\Debug\Debug.vert">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Update="Resources\Shaders\Reflective\Reflective.frag">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
