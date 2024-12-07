@@ -1,11 +1,11 @@
-﻿using RaCLib.IO;
-using System.Buffers.Binary;
+﻿using System.Buffers.Binary;
+using System.Diagnostics;
 using System.Numerics;
 using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
 
-namespace RaCLib.Armor
+namespace RaCLib.IO
 {
     public enum ArmorTextureFormat : byte
     {
@@ -17,6 +17,7 @@ namespace RaCLib.Armor
     {
         public ushort[]? Indices;
         public int IndexCount;
+        public int StartIndex;
         public int TextureIndex;
         public int Flags;
     }
@@ -24,6 +25,7 @@ namespace RaCLib.Armor
     {
         public ushort[]? Indices;
         public int IndexCount;
+        public int StartIndex;
         public int ReflectionMode;  // Is this correct? I honestly don't know...
         public int Flags;
     }
@@ -97,7 +99,7 @@ namespace RaCLib.Armor
                 case ArmorTextureFormat.BC1:
                     for (int level = 0; level < MipMapCount; level++)
                     {
-                        short mipWidth = (short)Math.Max(1, Width >> level); 
+                        short mipWidth = (short)Math.Max(1, Width >> level);
                         short mipHeight = (short)Math.Max(1, Height >> level);
 
                         int blocksX = (int)Math.Ceiling((double)mipWidth / 4);
@@ -138,7 +140,8 @@ namespace RaCLib.Armor
 
         public void Write(EndianBinaryWriter writer, Stream texStream)
         {
-            writer.Write(texStream.Position);
+            Console.WriteLine($"Texture info is writing at 0x{writer.Tell():X}");
+            writer.Write((int)texStream.Position);
             writer.Write(Unk04);
             writer.Write(MipMapCount);
             writer.Write((byte)Format);
@@ -167,10 +170,9 @@ namespace RaCLib.Armor
                 texStream.Write(mip.MipData);
             }
 
-            if (texStream.Position % 16 != 0)
+            if (texStream.Position % 0x80 != 0)
             {
-                byte[] tBuf = new byte[texStream.Position - (texStream.Position % 16)];
-                texStream.Write(tBuf);
+                texStream.Seek(0x80 - texStream.Position % 0x80, SeekOrigin.Current);
             }
         }
 
@@ -180,13 +182,14 @@ namespace RaCLib.Armor
         }
     }
 
-    public struct ArmorVertex 
+    public struct ArmorVertex
     {
         public Vector3 Position;
         public Vector3 Normal;
         public Vector2 UV;
         public Vector4 Weights;
         public Vector4 Indices;
+        // not in data, purely for rendering
         public Vector2 VertexMD;
     }
 
@@ -205,6 +208,8 @@ namespace RaCLib.Armor
         public List<ArmorTexturedSubmesh> TexturedMeshes;
         public List<ArmorReflectiveSubmesh> ReflectiveMeshes;  // these are transparent overlay meshes which get an env shine applied.
         public List<ArmorTexture> Textures;
+        public short NumTexturedVertices;
+        public short NumReflectiveVertices;
         public short NumLitVertices;
         public ArmorVertex[]? Vertices;
         public List<Bone> Bones;
@@ -214,7 +219,7 @@ namespace RaCLib.Armor
 
         private void Read(EndianBinaryReader reader)
         {
-            int meshInfoOffset  = reader.ReadInt32();
+            int meshInfoOffset = reader.ReadInt32();
             // we can use this to test
             if (meshInfoOffset > 0x10)
             {
@@ -235,9 +240,9 @@ namespace RaCLib.Armor
             int verticesOffset = reader.ReadInt32();
             int indicesOffset = reader.ReadInt32();
 
-            short texturedVerticesCount = reader.ReadInt16();
-            short reflectiveVerticesCount = reader.ReadInt16();
-            Vertices = new ArmorVertex[texturedVerticesCount + reflectiveVerticesCount];
+            NumTexturedVertices = reader.ReadInt16();
+            NumReflectiveVertices = reader.ReadInt16();
+            Vertices = new ArmorVertex[NumTexturedVertices + NumReflectiveVertices];
 
             NumLitVertices = reader.ReadInt16();
             // 2 bytes padding it to the end
@@ -248,7 +253,7 @@ namespace RaCLib.Armor
             {
                 ArmorTexturedSubmesh mesh = new ArmorTexturedSubmesh();
                 mesh.TextureIndex = reader.ReadInt32();
-                int baseFaceIndex = reader.ReadInt32();
+                mesh.StartIndex = reader.ReadInt32();
                 mesh.IndexCount = reader.ReadInt32();
                 mesh.Indices = new ushort[mesh.IndexCount];
                 mesh.Flags = reader.ReadInt32();
@@ -262,7 +267,7 @@ namespace RaCLib.Armor
             {
                 ArmorReflectiveSubmesh mesh = new ArmorReflectiveSubmesh();
                 mesh.ReflectionMode = reader.ReadInt32();
-                int baseFaceIndex = reader.ReadInt32();
+                mesh.StartIndex = reader.ReadInt32();
                 mesh.IndexCount = reader.ReadInt32();
                 mesh.Indices = new ushort[mesh.IndexCount];
                 mesh.Flags = reader.ReadInt32();
@@ -274,7 +279,7 @@ namespace RaCLib.Armor
 
             reader.Seek(verticesOffset, SeekOrigin.Begin);
 
-            for (int i = 0; i < texturedVerticesCount + reflectiveVerticesCount; i++)
+            for (int i = 0; i < NumTexturedVertices + NumReflectiveVertices; i++)
             {
                 Vertices[i].Position = reader.ReadVec3();
                 if (IsPS3)
@@ -286,12 +291,13 @@ namespace RaCLib.Armor
                     Vertices[i].Normal = reader.ReadVec3(VectorBinaryFormat.SInt8Normalized);
                     reader.Seek(1, SeekOrigin.Current);
                 }
-                if (i < texturedVerticesCount)
+                if (i < NumTexturedVertices)
                     Vertices[i].UV = reader.ReadVec2();
                 Vertices[i].Weights = reader.ReadVec4(VectorBinaryFormat.UInt8Normalized);
                 Vertices[i].Indices = reader.ReadVec4(VectorBinaryFormat.UInt8);
-                Vertices[i].VertexMD.X = (float)i;
-                Vertices[i].VertexMD.Y = (float)NumLitVertices;
+                // Not in data, purely for rendering
+                Vertices[i].VertexMD.X = i;
+                Vertices[i].VertexMD.Y = NumLitVertices;
             }
 
             // next fetch the indices
@@ -354,6 +360,120 @@ namespace RaCLib.Armor
             writer.Write(TexturedMeshes.Count);
             writer.Write(ReflectiveMeshes.Count);
             // the textured meshes usually start at 0x30, which is conveniently right after our data
+            writer.Write(0x30);
+            // and the reflection meshes are right after the textured meshes so...
+            writer.Write(0x30 + TexturedMeshes.Count * 0x10);
+
+            // now we can calculate the offset of our vertex data
+
+            int headLength = 0x30 + TexturedMeshes.Count * 0x10 + ReflectiveMeshes.Count * 0x10;
+
+            int vertexOffset = headLength % 0x80 == 0 ? headLength : headLength + (0x80 - headLength % 0x80);
+
+            writer.Write(vertexOffset);
+
+            int vertexStrideTextured = IsPS3 ? 0x28 : 0x20;
+            int vertexStrideReflective = IsPS3 ? 0x20 : 0x18;
+            int vertexLength = NumTexturedVertices * vertexStrideTextured + NumReflectiveVertices * vertexStrideReflective;
+
+            int indexOffset = vertexOffset + vertexLength;
+
+            if (indexOffset % 0x10 != 0)
+            {
+                indexOffset += 0x10 - indexOffset % 0x10;
+            }
+
+            writer.Write(indexOffset);
+            writer.Write(NumTexturedVertices);
+            writer.Write(NumReflectiveVertices);
+            writer.Write(NumLitVertices);
+            writer.Write((short)0);
+
+            foreach (var texMesh in TexturedMeshes)
+            {
+                writer.Write(texMesh.TextureIndex);
+                writer.Write(texMesh.StartIndex);
+                writer.Write(texMesh.IndexCount);
+                writer.Write(texMesh.Flags);
+            }
+
+            foreach (var refMesh in ReflectiveMeshes)
+            {
+                writer.Write(refMesh.ReflectionMode);
+                writer.Write(refMesh.StartIndex);
+                writer.Write(refMesh.IndexCount);
+                writer.Write(refMesh.Flags);
+            }
+
+            writer.Seek(vertexOffset, SeekOrigin.Begin);
+
+            for (int i = 0; i < Vertices.Length; i++)
+            {
+                writer.Write(Vertices[i].Position.X);
+                writer.Write(Vertices[i].Position.Y);
+                writer.Write(Vertices[i].Position.Z);
+                if (IsPS3)
+                {
+                    writer.Write(Vertices[i].Normal.X);
+                    writer.Write(Vertices[i].Normal.Y);
+                    writer.Write(Vertices[i].Normal.Z);
+                }
+                else
+                {
+                    writer.Write((byte)(Vertices[i].Normal.X * 127));
+                    writer.Write((byte)(Vertices[i].Normal.Y * 127));
+                    writer.Write((byte)(Vertices[i].Normal.Z * 127));
+                    writer.Write((byte)0);
+                }
+                if (i < NumTexturedVertices)
+                {
+                    writer.Write(Vertices[i].UV.X);
+                    writer.Write(Vertices[i].UV.Y);
+                }
+                writer.Write((byte)(Vertices[i].Weights.X * 255));
+                writer.Write((byte)(Vertices[i].Weights.Y * 255));
+                writer.Write((byte)(Vertices[i].Weights.Z * 255));
+                writer.Write((byte)(Vertices[i].Weights.W * 255));
+                writer.Write((byte)Vertices[i].Indices.X);
+                writer.Write((byte)Vertices[i].Indices.Y);
+                writer.Write((byte)Vertices[i].Indices.Z);
+                writer.Write((byte)Vertices[i].Indices.W);
+            }
+
+            writer.Seek(indexOffset, SeekOrigin.Begin);
+
+            foreach (var mesh in TexturedMeshes)
+            {
+                foreach (var idx in mesh.Indices)
+                {
+                    writer.Write(idx);
+                }
+            }
+            foreach (var mesh in ReflectiveMeshes)
+            {
+                foreach (var idx in mesh.Indices)
+                {
+                    writer.Write(idx);
+                }
+            }
+
+            if (writer.Tell() % 0x10 != 0)
+            {
+                writer.Seek(0x10 - writer.Tell() % 0x10, SeekOrigin.Current);
+            }
+
+            int vramOffset = (int)writer.Tell();
+            writer.Seek(0x04, SeekOrigin.Begin);
+            writer.Write(vramOffset);
+            writer.Seek(vramOffset, SeekOrigin.Begin);
+
+            Console.WriteLine($"Tex data at 0x{writer.Tell():X8}");
+
+            foreach (var texture in Textures)
+            {
+                texture.Write(writer, mTexStream);
+            }
+
         }
 
         public void Load(string filePath, string? enginePath = null)
@@ -371,7 +491,9 @@ namespace RaCLib.Armor
             if (texPath != null)
             {
                 mTexStream = File.Open(texPath, FileMode.Open);
-                Read(new EndianBinaryReader(File.Open(filePath, FileMode.Open)));
+                using (EndianBinaryReader reader = new EndianBinaryReader(File.Open(filePath, FileMode.Open)))
+                    Read(reader);
+                mTexStream.Close();
             }
             else
             {
@@ -428,12 +550,32 @@ namespace RaCLib.Armor
                         reader.Seek(ratchetOffset + boneInfoOffset, SeekOrigin.Begin);
                         bone.Position = reader.ReadVec3();
                         bone.Flags = reader.ReadInt16();
-                        bone.Parent = (short)(reader.ReadInt16() / (short)(0x40));
+                        bone.Parent = (short)(reader.ReadInt16() / 0x40);
                         boneInfoOffset += 0x10;
 
                         Bones.Add(bone);
                     }
                 }
+            }
+        }
+
+        public void Save(string filePath)
+        {
+            string? dirPath = Path.GetDirectoryName(filePath);
+            string fName = Path.GetFileNameWithoutExtension(filePath);
+            string? texPath = null;
+
+            if (dirPath != null)
+            {
+                texPath = Path.Join(dirPath, fName + ".vram");
+            }
+
+            if (texPath != null)
+            {
+                mTexStream = File.Open(texPath, FileMode.Create);
+                using (EndianBinaryWriter writer = new EndianBinaryWriter(File.Open(filePath, FileMode.Create)))
+                    Write(writer);
+                mTexStream.Close();
             }
         }
 

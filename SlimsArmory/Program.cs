@@ -1,7 +1,6 @@
 ﻿using Assimp;
 using Assimp.Unmanaged;
 using OpenTK.Mathematics;
-using RaCLib.Armor;
 using RaCLib.IO;
 using SlimsArmory;
 using SlimsArmory.AssimpHelpers;
@@ -246,7 +245,7 @@ static class Program
 
                         // do a dot product to compare the two
                         float winding = Vector3.Dot(faceNormal, vertexNormalAvg);
-
+                        
 
                         // and if it's positive, it's correct
                         if (winding > 0)
@@ -350,12 +349,43 @@ static class Program
 
                     }
                 }
+                return;
             }
 
             if (argList.Contains("-c"))
             {
-                Console.WriteLine("WIP");
-                return;
+
+
+                Armor ps3Armor = new Armor();
+
+                string? filePath = Path.GetDirectoryName(Path.GetFullPath(argList.Last()));
+
+                string engPath = Path.Join(filePath, "..\\..\\level0\\engine.ps3");
+
+                string armorName = Path.GetFileNameWithoutExtension(argList.Last());
+
+
+                Console.WriteLine(engPath);
+                Console.WriteLine(Path.Exists(engPath));
+
+                ps3Armor.Load(argList.Last(), engPath);
+
+                string? outputDir = Path.GetDirectoryName(Path.GetFullPath(argList.Last()));
+                string? outputFileName;
+
+                if (argList.Contains("-o"))
+                {
+                    outputFileName = argList[argList.IndexOf("-o") + 1];
+                    outputDir = Path.GetDirectoryName(Path.GetFullPath(outputFileName));
+                }
+                else
+                {
+                    outputFileName = Path.Join(Path.GetDirectoryName(Path.GetFullPath(argList.Last())), Path.GetFileNameWithoutExtension(argList.Last()) + ".ps3");
+                }
+                
+                Console.WriteLine(outputFileName);
+
+                ps3Armor.Save(outputFileName);
             }
 
             if (argList.Contains("-v"))
@@ -393,6 +423,7 @@ static class Program
                     wnd.Run();
                 }
             }
+            return;
         }
 
         else
@@ -403,6 +434,7 @@ static class Program
     -c              Creates a model from a DAE File
     -v              View a specified model
     -o              Specifies output filename (Defaults to Input filename if not specified)");
+            return;
         }
     }
 }

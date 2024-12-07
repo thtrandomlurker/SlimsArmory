@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using RaCLib.Armor;
 using OpenTK.Graphics.OpenGL4;
+using RaCLib.IO;
 
 namespace SlimsArmory.Rendering.Armor
 {

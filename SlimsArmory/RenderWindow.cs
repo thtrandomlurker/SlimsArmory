@@ -7,12 +7,12 @@ using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
-using RaCLib.Armor;
 using SlimsArmory.Rendering;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using OpenTK.Input;
 using ImGuiNET;
 using SlimsArmory.ImGuiHelpers;
+using RaCLib.IO;
 
 namespace SlimsArmory
 {
