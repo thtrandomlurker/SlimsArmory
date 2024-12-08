@@ -7,6 +7,7 @@ using OpenTK.Mathematics;
 using OpenTK.Graphics.OpenGL4;
 using SlimsArmory.Rendering.Armor;
 using System.Reflection;
+using RaCLib.Armor;
 
 namespace SlimsArmory.Rendering
 {
@@ -57,7 +58,7 @@ namespace SlimsArmory.Rendering
             GL.EnableVertexAttribArray(0);
         }
 
-        public void AddObject(RaCLib.IO.Armor armor)
+        public void AddObject(RaCLib.Armor.Armor armor)
         {
             Meshes.Add(new GLMesh(armor));
         }

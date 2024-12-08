@@ -1,7 +1,9 @@
 ﻿using Assimp;
+using Assimp.Configs;
 using Assimp.Unmanaged;
 using OpenTK.Mathematics;
 using RaCLib.IO;
+using RaCLib.Armor;
 using SlimsArmory;
 using SlimsArmory.AssimpHelpers;
 using System.ComponentModel.Design;
@@ -200,7 +202,7 @@ static class Program
 
                     Material aiMat = new Material();
 
-                    aiMat.Name = $"{armorName}_mat_{i}_ref_{ps3Armor.ReflectiveMeshes[i].ReflectionMode}";
+                    aiMat.Name = $"{armorName}-mat{i}_ref_{ps3Armor.ReflectiveMeshes[i].ReflectionMode}";
 
                     aiMat.ShadingMode = ShadingMode.Blinn;
 
@@ -358,18 +360,6 @@ static class Program
 
                 Armor ps3Armor = new Armor();
 
-                string? filePath = Path.GetDirectoryName(Path.GetFullPath(argList.Last()));
-
-                string engPath = Path.Join(filePath, "..\\..\\level0\\engine.ps3");
-
-                string armorName = Path.GetFileNameWithoutExtension(argList.Last());
-
-
-                Console.WriteLine(engPath);
-                Console.WriteLine(Path.Exists(engPath));
-
-                ps3Armor.Load(argList.Last(), engPath);
-
                 string? outputDir = Path.GetDirectoryName(Path.GetFullPath(argList.Last()));
                 string? outputFileName;
 
@@ -384,6 +374,293 @@ static class Program
                 }
                 
                 Console.WriteLine(outputFileName);
+
+                AssimpContext context = new AssimpContext();
+                Scene scene = context.ImportFile(argList.Last(), PostProcessSteps.OptimizeMeshes | PostProcessSteps.JoinIdenticalVertices | PostProcessSteps.Triangulate);
+
+                List<Mesh> texturedMeshes = new List<Mesh>();
+                List<Mesh> reflectionMeshes = new List<Mesh>();
+
+                List<int> matIndexTexMap = new List<int>();
+
+                foreach (var mesh in scene.Meshes)
+                {
+                    Console.WriteLine(mesh.Name);
+
+                    string nameToParse = scene.Materials[mesh.MaterialIndex].Name;
+                    string[] nameParts = nameToParse.Split('_');
+
+                    if (nameParts[1] == "ref")
+                    {
+                        ps3Armor.NumReflectiveVertices += (short)mesh.VertexCount;
+                        reflectionMeshes.Add(mesh);
+                    }
+                    else
+                    {
+                        ps3Armor.NumTexturedVertices += (short)mesh.VertexCount;
+                        ps3Armor.NumLitVertices += (short)mesh.VertexCount;
+                        texturedMeshes.Add(mesh);
+                        if (!matIndexTexMap.Contains(mesh.MaterialIndex))
+                            matIndexTexMap.Add(mesh.MaterialIndex);
+                    }
+                }
+                ps3Armor.Vertices = new ArmorVertex[ps3Armor.NumTexturedVertices + ps3Armor.NumReflectiveVertices];
+
+
+                int baseVertIndex = 0;
+                int baseIndex = 0;
+
+                foreach (var texMeshTmp in texturedMeshes)
+                {
+                    ArmorTexturedSubmesh texMesh = new ArmorTexturedSubmesh();
+                    texMesh.TextureIndex = matIndexTexMap.IndexOf(texMeshTmp.MaterialIndex);
+                    texMesh.StartIndex = baseIndex;
+                    texMesh.IndexCount = texMeshTmp.FaceCount * 3;
+                    texMesh.Flags = 0x05000000;
+                    texMesh.Indices = new ushort[texMesh.IndexCount];
+
+                    int indexPos = 0;
+
+                    foreach (var face in texMeshTmp.Faces)
+                    {
+                        foreach (var idx in face.Indices)
+                        {
+                            texMesh.Indices[indexPos] = (ushort)((ushort)idx + (ushort)baseVertIndex);
+                            indexPos += 1;
+                        }
+                    }
+                    ps3Armor.TexturedMeshes.Add(texMesh);
+
+                    baseIndex += texMesh.IndexCount;
+                    // now put it into the vxbf
+
+                    int[][] tIndices = new int[texMeshTmp.VertexCount][];
+                    float[][] tWeights = new float[texMeshTmp.VertexCount][];
+                    int[] tIndicesCurPos = new int[texMeshTmp.VertexCount];
+
+                    for (int i = 0; i < texMeshTmp.VertexCount; i++)
+                    {
+                        tIndices[i] = new int[4];
+                        tWeights[i] = new float[4];
+                    }
+
+                    foreach (var bone in texMeshTmp.Bones)
+                    {
+                        foreach (var weight in bone.VertexWeights)
+                        {
+                            Console.WriteLine(weight.VertexID);
+                            tIndices[weight.VertexID][tIndicesCurPos[weight.VertexID]] = int.Parse(bone.Name.Split('_')[1]);
+                            tWeights[weight.VertexID][tIndicesCurPos[weight.VertexID]] = weight.Weight;
+                            tIndicesCurPos[weight.VertexID]++;
+                        }
+                    }
+
+
+                    for (int i = 0; i < texMeshTmp.VertexCount; i++)
+                    {
+                        ArmorVertex vertex = new ArmorVertex();
+                        vertex.Position = texMeshTmp.Vertices[i] / 1024.0f;
+                        vertex.Normal = texMeshTmp.Normals[i];
+                        vertex.UV.X = texMeshTmp.TextureCoordinateChannels[0][i].X;
+                        vertex.UV.Y = texMeshTmp.TextureCoordinateChannels[0][i].Y * -1.0f;
+                        vertex.Weights.X = tWeights[i][0];
+                        vertex.Weights.Y = tWeights[i][1];
+                        vertex.Weights.Z = tWeights[i][2];
+                        vertex.Weights.W = tWeights[i][3];
+                        vertex.Indices.X = tIndices[i][0];
+                        vertex.Indices.Y = tIndices[i][1];
+                        vertex.Indices.Z = tIndices[i][2];
+                        vertex.Indices.W = tIndices[i][3];
+
+                        ps3Armor.Vertices[i + baseVertIndex] = vertex;
+                    }
+                    baseVertIndex += texMeshTmp.VertexCount;
+                }
+
+                foreach (var refMeshTmp in reflectionMeshes)
+                {
+                    ArmorReflectiveSubmesh refMesh = new ArmorReflectiveSubmesh();
+                    refMesh.ReflectionMode = -2;
+                    refMesh.StartIndex = baseIndex;
+                    refMesh.IndexCount = refMeshTmp.FaceCount * 3;
+                    refMesh.Flags = 0x05000000;
+                    refMesh.Indices = new ushort[refMesh.IndexCount];
+
+                    int indexPos = 0;
+
+                    foreach (var face in refMeshTmp.Faces)
+                    {
+                        foreach (var idx in face.Indices)
+                        {
+                            refMesh.Indices[indexPos] = (ushort)((ushort)idx + (ushort)baseVertIndex);
+                            indexPos += 1;
+                        }
+                    }
+                    ps3Armor.ReflectiveMeshes.Add(refMesh);
+
+                    baseIndex += refMesh.IndexCount;
+                    // now put it into the vxbf
+
+                    int[][] tIndices = new int[refMeshTmp.VertexCount][];
+                    float[][] tWeights = new float[refMeshTmp.VertexCount][];
+                    int[] tIndicesCurPos = new int[refMeshTmp.VertexCount];
+
+                    for (int i = 0; i < refMeshTmp.VertexCount; i++)
+                    {
+                        tIndices[i] = new int[4];
+                        tWeights[i] = new float[4];
+                    }
+
+                    foreach (var bone in refMeshTmp.Bones)
+                    {
+                        foreach (var weight in bone.VertexWeights)
+                        {
+                            Console.WriteLine(weight.VertexID);
+                            tIndices[weight.VertexID][tIndicesCurPos[weight.VertexID]] = int.Parse(bone.Name.Split('_')[1]);
+                            tWeights[weight.VertexID][tIndicesCurPos[weight.VertexID]] = weight.Weight;
+                            tIndicesCurPos[weight.VertexID]++;
+                        }
+                    }
+
+
+                    for (int i = 0; i < refMeshTmp.VertexCount; i++)
+                    {
+                        ArmorVertex vertex = new ArmorVertex();
+                        vertex.Position = refMeshTmp.Vertices[i] / 1024.0f;
+                        vertex.Normal = refMeshTmp.Normals[i];
+                        vertex.Weights.X = tWeights[i][0];
+                        vertex.Weights.Y = tWeights[i][1];
+                        vertex.Weights.Z = tWeights[i][2];
+                        vertex.Weights.W = tWeights[i][3];
+                        vertex.Indices.X = tIndices[i][0];
+                        vertex.Indices.Y = tIndices[i][1];
+                        vertex.Indices.Z = tIndices[i][2];
+                        vertex.Indices.W = tIndices[i][3];
+
+                        ps3Armor.Vertices[i + baseVertIndex] = vertex;
+                    }
+                    baseVertIndex += refMeshTmp.VertexCount;
+                }
+
+                // now we can initialize the vertex array
+
+                string platform = argList[argList.IndexOf("-c") + 1];
+                if (platform == "ps3")
+                {
+                    ps3Armor.IsPS3 = true;
+                }
+                else if (platform != "vita")
+                {
+                    throw new ArgumentException($"Unsupported platform {platform}");
+                }
+
+                for (int i = 0; i < matIndexTexMap.Count; i++)
+                {
+                    ArmorTexture tex = new ArmorTexture();
+
+                    string sourcePath = scene.Materials[matIndexTexMap[i]].TextureDiffuse.FilePath;
+
+                    if (sourcePath == "")
+                    {
+                        throw new InvalidDataException("Textured mat has no texture");
+                    }
+
+                    if (!Path.IsPathFullyQualified(sourcePath))
+                    {
+                        sourcePath = Path.Join(Path.GetDirectoryName(Path.GetFullPath(argList.Last())), sourcePath);
+                    }
+
+                    Console.WriteLine(sourcePath);
+
+                    if (Path.GetExtension(sourcePath) == ".dds")
+                    {
+                        using (EndianBinaryReader ddsReader = new EndianBinaryReader(File.OpenRead(sourcePath)))
+                        {
+                            ddsReader.Seek(0xC, SeekOrigin.Begin);
+                            tex.Width = (short)ddsReader.ReadInt32();
+                            tex.Height = (short)ddsReader.ReadInt32();
+                            int pitch = ddsReader.ReadInt32();
+                            ddsReader.Seek(0x4, SeekOrigin.Current);
+                            tex.MipMapCount = (byte)ddsReader.ReadInt32();
+                            ddsReader.Seek(0x54, SeekOrigin.Begin);
+                            int fourcc = (int)ddsReader.ReadInt32();
+
+                            switch (fourcc)
+                            {
+                                case 0x31545844:
+                                    tex.Format = ArmorTextureFormat.BC1;
+                                    ddsReader.Seek(0x80, SeekOrigin.Begin);
+                                    for (int level = 0; level < tex.MipMapCount; level++)
+                                    {
+                                        short mipWidth = (short)Math.Max(1, tex.Width >> level);
+                                        short mipHeight = (short)Math.Max(1, tex.Height >> level);
+
+                                        int blocksX = (int)Math.Ceiling((double)mipWidth / 4);
+                                        int blocksY = (int)Math.Ceiling((double)mipHeight / 4);
+
+                                        long mipmapSize = blocksX * blocksY * 8;
+
+                                        MipMap mip = new MipMap();
+                                        mip.Width = mipWidth;
+                                        mip.Height = mipHeight;
+                                        mip.MipData = new byte[mipmapSize];
+                                        ddsReader.Read(mip.MipData, 0, (int)mipmapSize);
+                                        tex.MipMaps.Add(mip);
+                                    }
+                                    break;
+                                case 0x33545844:
+                                    tex.Format = ArmorTextureFormat.BC2;
+                                    ddsReader.Seek(0x80, SeekOrigin.Begin);
+                                    for (int level = 0; level < tex.MipMapCount; level++)
+                                    {
+                                        short mipWidth = (short)Math.Max(1, tex.Width >> level);
+                                        short mipHeight = (short)Math.Max(1, tex.Height >> level);
+
+                                        int blocksX = (int)Math.Ceiling((double)mipWidth / 4);
+                                        int blocksY = (int)Math.Ceiling((double)mipHeight / 4);
+
+                                        long mipmapSize = blocksX * blocksY * 16;
+
+                                        MipMap mip = new MipMap();
+                                        mip.Width = mipWidth;
+                                        mip.Height = mipHeight;
+                                        mip.MipData = new byte[mipmapSize];
+                                        ddsReader.Read(mip.MipData, 0, (int)mipmapSize);
+                                        tex.MipMaps.Add(mip);
+                                    }
+                                    break;
+                                case 0x35545844:
+                                    tex.Format = ArmorTextureFormat.BC3;
+                                    ddsReader.Seek(0x80, SeekOrigin.Begin);
+                                    for (int level = 0; level < tex.MipMapCount; level++)
+                                    {
+                                        short mipWidth = (short)Math.Max(1, tex.Width >> level);
+                                        short mipHeight = (short)Math.Max(1, tex.Height >> level);
+
+                                        int blocksX = (int)Math.Ceiling((double)mipWidth / 4);
+                                        int blocksY = (int)Math.Ceiling((double)mipHeight / 4);
+
+                                        long mipmapSize = blocksX * blocksY * 16;
+
+                                        MipMap mip = new MipMap();
+                                        mip.Width = mipWidth;
+                                        mip.Height = mipHeight;
+                                        mip.MipData = new byte[mipmapSize];
+                                        ddsReader.Read(mip.MipData, 0, (int)mipmapSize);
+                                        tex.MipMaps.Add(mip);
+                                    }
+                                    break;
+                                default:
+                                    throw new InvalidDataException("Unsupported Texture Format");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        throw new InvalidDataException("Non-DDS Textures are currently unsupported");
+                    }
+                    ps3Armor.Textures.Add(tex);
+                }
 
                 ps3Armor.Save(outputFileName);
             }

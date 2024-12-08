@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.11.35312.102
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SlimsArmory", "SlimsArmory\SlimsArmory.csproj", "{1F57D1FF-80F0-45B6-A653-1329DD047CA7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SlimsArmory", "SlimsArmory\SlimsArmory.csproj", "{1F57D1FF-80F0-45B6-A653-1329DD047CA7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RaCLib", "RaCLib\RaCLib.csproj", "{5F6A3C4A-0CF3-4F4D-9F3E-B97536FE3BC6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RaCLib", "RaCLib\RaCLib.csproj", "{5F6A3C4A-0CF3-4F4D-9F3E-B97536FE3BC6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DXTCompressTest", "DXTCompressTest\DXTCompressTest.csproj", "{6107B45B-D3E4-4037-AEB8-36EA1E008455}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{5F6A3C4A-0CF3-4F4D-9F3E-B97536FE3BC6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5F6A3C4A-0CF3-4F4D-9F3E-B97536FE3BC6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5F6A3C4A-0CF3-4F4D-9F3E-B97536FE3BC6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6107B45B-D3E4-4037-AEB8-36EA1E008455}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6107B45B-D3E4-4037-AEB8-36EA1E008455}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6107B45B-D3E4-4037-AEB8-36EA1E008455}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6107B45B-D3E4-4037-AEB8-36EA1E008455}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

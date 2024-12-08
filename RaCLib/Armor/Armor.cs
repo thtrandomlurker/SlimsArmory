@@ -4,8 +4,9 @@ using System.Numerics;
 using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
+using RaCLib.IO;
 
-namespace RaCLib.IO
+namespace RaCLib.Armor
 {
     public enum ArmorTextureFormat : byte
     {
@@ -179,6 +180,26 @@ namespace RaCLib.IO
         public ArmorTexture()
         {
             MipMaps = new List<MipMap>();
+            Unk04 = 0;
+            Unk07 = 0x29;
+            Unk08 = 0;
+            Unk09 = 1;
+            Unk0A = 3;
+            Unk0B = 3;
+            Unk0C = 0x80;
+            Unk0D = 0x04;
+            Unk0E = 0x00;
+            Unk0F = 0x00;
+            GTFFlags = 0xAAE4;
+            Unk14 = 0x02;
+            Unk15 = 0x06;
+            Unk16 = 0x3E;
+            Unk17 = 0x80;
+
+            Unk1C = 0x10;
+            Unk1E = 0x00;
+            Unk20 = 0xFF;
+            Unk22 = 0x00;
         }
     }
 

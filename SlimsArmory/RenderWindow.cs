@@ -13,6 +13,7 @@ using OpenTK.Input;
 using ImGuiNET;
 using SlimsArmory.ImGuiHelpers;
 using RaCLib.IO;
+using RaCLib.Armor;
 
 namespace SlimsArmory
 {

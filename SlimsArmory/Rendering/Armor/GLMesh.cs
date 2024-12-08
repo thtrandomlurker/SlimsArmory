@@ -5,7 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 using OpenTK.Graphics.OpenGL4;
 using static OpenTK.Graphics.OpenGL.GL;
-using Armor = RaCLib.IO.Armor;
+using RaCLib.IO;
+using RaCLib.Armor;
 
 namespace SlimsArmory.Rendering.Armor
 {
@@ -14,7 +15,7 @@ namespace SlimsArmory.Rendering.Armor
     /// </summary>
     public class GLMesh
     {
-        private RaCLib.IO.Armor mBaseMesh;
+        private RaCLib.Armor.Armor mBaseMesh;
         private int mTexturedVertexArrayObject;
         private int mTexturedVertexBufferObject;
 
@@ -25,7 +26,7 @@ namespace SlimsArmory.Rendering.Armor
         public int TextureIndex;
         public int NumLitVertices;
 
-        public GLMesh(RaCLib.IO.Armor mesh)
+        public GLMesh(RaCLib.Armor.Armor mesh)
         {
             mBaseMesh = mesh;
             if (mBaseMesh.Vertices == null)
