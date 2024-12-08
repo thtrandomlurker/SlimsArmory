@@ -376,6 +376,7 @@ static class Program
                 Console.WriteLine(outputFileName);
 
                 AssimpContext context = new AssimpContext();
+                context.SetConfig(new VertexBoneWeightLimitConfig(4));
                 Scene scene = context.ImportFile(argList.Last(), PostProcessSteps.OptimizeMeshes | PostProcessSteps.JoinIdenticalVertices | PostProcessSteps.Triangulate);
 
                 List<Mesh> texturedMeshes = new List<Mesh>();
@@ -447,10 +448,11 @@ static class Program
 
                     foreach (var bone in texMeshTmp.Bones)
                     {
+                        Console.WriteLine(bone.Name);
                         foreach (var weight in bone.VertexWeights)
                         {
                             Console.WriteLine(weight.VertexID);
-                            tIndices[weight.VertexID][tIndicesCurPos[weight.VertexID]] = int.Parse(bone.Name.Split('_')[1]);
+                            tIndices[weight.VertexID][tIndicesCurPos[weight.VertexID]] = int.Parse(bone.Name.Split('_').Last());
                             tWeights[weight.VertexID][tIndicesCurPos[weight.VertexID]] = weight.Weight;
                             tIndicesCurPos[weight.VertexID]++;
                         }
@@ -514,10 +516,11 @@ static class Program
 
                     foreach (var bone in refMeshTmp.Bones)
                     {
+                        Console.WriteLine(bone.Name);
                         foreach (var weight in bone.VertexWeights)
                         {
                             Console.WriteLine(weight.VertexID);
-                            tIndices[weight.VertexID][tIndicesCurPos[weight.VertexID]] = int.Parse(bone.Name.Split('_')[1]);
+                            tIndices[weight.VertexID][tIndicesCurPos[weight.VertexID]] = int.Parse(bone.Name.Split('_').Last());
                             tWeights[weight.VertexID][tIndicesCurPos[weight.VertexID]] = weight.Weight;
                             tIndicesCurPos[weight.VertexID]++;
                         }
