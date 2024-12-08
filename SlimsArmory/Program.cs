@@ -92,7 +92,7 @@ static class Program
 
                     Material aiMat = new Material();
 
-                    aiMat.Name = $"{armorName}_mat_{i}_tex_{ps3Armor.TexturedMeshes[i].TextureIndex}";
+                    aiMat.Name = $"{armorName}-mat{i}_tex_{ps3Armor.TexturedMeshes[i].TextureIndex}";
 
                     TextureSlot diffTex = new TextureSlot() { FilePath = $"{armorName}_tex_{ps3Armor.TexturedMeshes[i].TextureIndex}.dds" };
                     diffTex.Mapping = TextureMapping.FromUV;
@@ -388,7 +388,7 @@ static class Program
                     Console.WriteLine(mesh.Name);
 
                     string nameToParse = scene.Materials[mesh.MaterialIndex].Name;
-                    string[] nameParts = nameToParse.Split('_');
+                    string[] nameParts = nameToParse.Split('-')[1].Split("_");
 
                     if (nameParts[1] == "ref")
                     {
