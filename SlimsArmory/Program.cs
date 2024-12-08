@@ -385,10 +385,11 @@ static class Program
 
                 foreach (var mesh in scene.Meshes)
                 {
-                    Console.WriteLine(mesh.Name);
+                    Console.WriteLine($"{mesh.Name}");
 
                     string nameToParse = scene.Materials[mesh.MaterialIndex].Name;
-                    string[] nameParts = nameToParse.Split('-')[1].Split("_");
+                    string[] nameParts = nameToParse.Substring(nameToParse.IndexOf('-')).Split('_');
+                    Console.Write(nameParts[2]);
 
                     if (nameParts[1] == "ref")
                     {
