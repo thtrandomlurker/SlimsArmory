@@ -383,6 +383,7 @@ static class Program
                 List<Mesh> reflectionMeshes = new List<Mesh>();
 
                 List<int> matIndexTexMap = new List<int>();
+                List<int> matRefModeMap = new List<int>();
 
                 foreach (var mesh in scene.Meshes)
                 {
@@ -395,6 +396,7 @@ static class Program
                     if (nameParts[1] == "ref")
                     {
                         ps3Armor.NumReflectiveVertices += (short)mesh.VertexCount;
+                        matRefModeMap.Add(int.Parse(nameToParse.Substring(nameToParse.IndexOf('-')).Split('_').Last()));
                         reflectionMeshes.Add(mesh);
                     }
                     else
@@ -483,7 +485,7 @@ static class Program
                 foreach (var refMeshTmp in reflectionMeshes)
                 {
                     ArmorReflectiveSubmesh refMesh = new ArmorReflectiveSubmesh();
-                    refMesh.ReflectionMode = -2;
+                    refMesh.ReflectionMode = matRefModeMap[ps3Armor.ReflectiveMeshes.Count];
                     refMesh.StartIndex = baseIndex;
                     refMesh.IndexCount = refMeshTmp.FaceCount * 3;
                     refMesh.Flags = 0x05000000;
