@@ -495,6 +495,15 @@ namespace RaCLib.Armor
                 texture.Write(writer, mTexStream);
             }
 
+            if (writer.Tell() > 0x46000)
+            {
+                Console.WriteLine("WARNING: Your model is too big and will crash. Try decimating geometry to reduce vertex counts to under 5800");
+            }
+            if (mTexStream.Position > 0x90000)
+            {
+                Console.WriteLine("WARNING: Your textures are too big and will crash. Consider removing mipmaps, and scaling down");
+            }
+
         }
 
         public void Load(string filePath, string? enginePath = null)
